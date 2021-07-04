@@ -1,0 +1,33 @@
+{
+  "name": "sharehub tabcrawler",
+  "version": "1.0",
+  "description": "Gets active tabs of users and sends to sharehub node app",
+  "permissions": [
+    "http://localhost/*",
+    "background",
+    "tabs",
+    "activeTab",
+    "<all_urls>",
+    "identity",
+    "storage"
+  ],
+
+  "background": {
+    "page": "background.html",
+    "persistent": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["./scripts/background.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "icons": {
+    "16": "assets/icons/logo_16x16.png",
+    "48": "assets/icons/logo_48x48.png",
+    "128": "assets/icons/logo_128x128.png"
+  },
+  "manifest_version": 2,
+  "content_security_policy": "script-src 'self' https://www.gstatic.com/ https://*.firebaseio.com https://www.googleapis.com https://ajax.googleapis.com; object-src 'self'"
+}
