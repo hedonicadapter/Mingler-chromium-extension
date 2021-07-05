@@ -1,11 +1,18 @@
 let uid;
 
-let initStorageRetryLimit = 3;
-let postTabDataRetryLimit = 3;
+let [
+  initStorageRetryLimit,
+  postTabDataRetryLimit,
+  postYouTubeDataRetryLimit,
+  postYouTubeTimeRetryLimit,
+] = Array(4).fill(3);
+
+let youtubeRegex =
+  /(https:(.+?\.)?youtube\.com\/watch(\/[A-Za-z0-9\-\._~:\/\?#\[\]@!$&'\(\)\*\+,;\=]*)?)/;
 
 const initStorage = () => {
   try {
-    await initStorageCache;
+    initStorageCache;
   } catch (e) {
     console.log('Storage.sync initialization error: ', e, '\n Retrying...');
 
@@ -88,6 +95,66 @@ function postTabData(data) {
     });
 }
 
+function postYouTubeData(data) {
+  db.collection('Users')
+    .doc(uid?.replace(/['"]+/g, ''))
+    .collection('Activity')
+    .doc('YouTube')
+    .set(data)
+    .then(function () {
+      console.log('YouTube data successfully written!');
+    })
+    .catch(function (error) {
+      console.error('Error writing YouTube data: ', error, '\n Retrying...');
+      if (postYouTubeDataRetryLimit < 3) {
+        postYouTubeDataRetryLimit++;
+        postTabData(data);
+      } else {
+        postYouTubeDataRetryLimit = 0;
+      }
+    });
+}
+
+function postYouTubeTime() {
+  chrome.tabs.executeScript(
+    {
+      code: 'document.querySelector(".video-stream").getCurrentTime();',
+    },
+    (results) => {
+      let time = results && results[0];
+      console.log(time);
+      db.collection('Users')
+        .doc(uid?.replace(/['"]+/g, ''))
+        .collection('Activity')
+        .doc('YouTube')
+        .set({ YouTubeTime: time }, { merge: true })
+        .then(function () {
+          console.log('YouTube time successfully written!');
+        })
+        .catch(function (error) {
+          console.error(
+            'Error writing YouTube time: ',
+            error,
+            '\n Retrying...'
+          );
+          if (postYouTubeTimeRetryLimit < 3) {
+            postYouTubeTimeRetryLimit++;
+            postYouTubeTime(time);
+          } else {
+            postYouTubeTimeRetryLimit = 0;
+          }
+        });
+    }
+  );
+}
+
+db.collection('Users')
+  .doc(uid?.replace(/['"]+/g, ''))
+  .collection('YouTubeTimeRequests')
+  .onSnapshot(() => {
+    postYouTubeTime();
+  });
+
 chrome.tabs.onActivated.addListener(function (activeInfo) {
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
     // Throw error
@@ -96,13 +163,23 @@ chrome.tabs.onActivated.addListener(function (activeInfo) {
 
     var activeTab = tabs[0];
 
-    let data = {
-      TabTitle: activeTab.title,
-      TabURL: activeTab.url,
-      Date: new Date(),
-    };
+    if (youtubeRegex.test(activeTab.url)) {
+      let data = {
+        YouTubeTitle: activeTab.title,
+        YouTubeURL: activeTab.url,
+        Date: new Date(),
+      };
 
-    postTabData(data);
+      postYouTubeData(data);
+    } else {
+      let data = {
+        TabTitle: activeTab.title,
+        TabURL: activeTab.url,
+        Date: new Date(),
+      };
+
+      postTabData(data);
+    }
   });
 });
 
