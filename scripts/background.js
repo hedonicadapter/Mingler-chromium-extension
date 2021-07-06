@@ -186,33 +186,6 @@ chrome.tabs.onUpdated.addListener(function (activeInfo) {
     }
   });
 });
-chrome.tabs.onActivated.addListener(function (activeInfo) {
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    // Throw error
-    if (chrome.runtime.lastError) {
-    }
-
-    var activeTab = tabs[0];
-
-    if (youtubeRegex.test(activeTab.url)) {
-      let data = {
-        YouTubeTitle: activeTab.title,
-        YouTubeURL: activeTab.url,
-        Date: new Date(),
-      };
-
-      postYouTubeData(data);
-    } else {
-      let data = {
-        TabTitle: activeTab.title,
-        TabURL: activeTab.url,
-        Date: new Date(),
-      };
-
-      postTabData(data);
-    }
-  });
-});
 
 // function connect() {
 //   const ws = new WebSocket('ws://localhost:8080');
