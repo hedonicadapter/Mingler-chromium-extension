@@ -159,26 +159,24 @@ db.collection('Users')
     });
   });
 
-chrome.tabs.onUpdated.addListener(function (activeInfo) {
+chrome.tabs.onUpdated.addListener(function (activeInfo, changeInfo, tab) {
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
     // Throw error
     if (chrome.runtime.lastError) {
     }
 
-    var activeTab = tabs[0];
-
-    if (youtubeRegex.test(activeTab.url)) {
+    if (youtubeRegex.test(tab.url)) {
       let data = {
-        YouTubeTitle: activeTab.title,
-        YouTubeURL: activeTab.url,
+        YouTubeTitle: tab.title,
+        YouTubeURL: tab.url,
         Date: new Date(),
       };
 
       postYouTubeData(data);
     } else {
       let data = {
-        TabTitle: activeTab.title,
-        TabURL: activeTab.url,
+        TabTitle: tab.title,
+        TabURL: tab.url,
         Date: new Date(),
       };
 
