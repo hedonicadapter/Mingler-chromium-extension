@@ -7,6 +7,10 @@ let [
   postYouTubeTimeRetryLimit,
 ] = Array(4).fill(3);
 
+// Used to target specific tab with the current youtube link
+// when executing content script
+let currentYouTubeURL;
+
 let youtubeRegex =
   /(https:(.+?\.)?youtube\.com\/watch(\/[A-Za-z0-9\-\._~:\/\?#\[\]@!$&'\(\)\*\+,;\=]*)?)/;
 
@@ -34,8 +38,20 @@ var storageListener = (changes, namespace) => {
 const initStorageCache = getStorageSyncData()
   .then((data) => {
     // Copy the data retrieved from storage into storageCache.
-    uid = data;
+    uid = data.replace(/['"]+/g, '');
     chrome.storage.onChanged.addListener(storageListener);
+
+    db.collection('Users')
+      .doc(data?.replace(/['"]+/g, ''))
+      .collection('YouTubeTimeRequests')
+      .onSnapshot((snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added' || change.type === 'modified') {
+            console.log('changed');
+            postYouTubeTime();
+          }
+        });
+      });
   })
   .catch(() => {
     chrome.storage.onChanged.addListener(storageListener);
@@ -77,7 +93,7 @@ function getUserID() {
 
 function postTabData(data) {
   db.collection('Users')
-    .doc(uid?.replace(/['"]+/g, ''))
+    .doc(uid)
     .collection('Activity')
     .doc('ChromiumTab')
     .set(data)
@@ -97,7 +113,7 @@ function postTabData(data) {
 
 function postYouTubeData(data) {
   db.collection('Users')
-    .doc(uid?.replace(/['"]+/g, ''))
+    .doc(uid)
     .collection('Activity')
     .doc('YouTube')
     .set(data)
@@ -116,48 +132,44 @@ function postYouTubeData(data) {
 }
 
 function postYouTubeTime() {
-  chrome.tabs.executeScript(
-    {
-      code: 'document.getElementById("movie_player").getCurrentTime()',
-    },
-    (results) => {
-      // let time = results && results[0];
-      console.log(results);
-      db.collection('Users')
-        .doc(uid?.replace(/['"]+/g, ''))
-        .collection('Activity')
-        .doc('YouTube')
-        .set({ YouTubeTime: time }, { merge: true })
-        .then(function () {
-          console.log('YouTube time successfully written!');
-        })
-        .catch(function (error) {
-          console.error(
-            'Error writing YouTube time: ',
-            error,
-            '\n Retrying...'
-          );
-          if (postYouTubeTimeRetryLimit < 3) {
-            postYouTubeTimeRetryLimit++;
-            postYouTubeTime(time);
-          } else {
-            postYouTubeTimeRetryLimit = 0;
-          }
-        });
-    }
-  );
-}
+  queryInfo = {
+    url: currentYouTubeURL,
+  };
 
-db.collection('Users')
-  .doc(uid?.replace(/['"]+/g, ''))
-  .collection('YouTubeTimeRequests')
-  .onSnapshot((snapshot) => {
-    snapshot.docChanges().forEach((change) => {
-      if (change.type === 'added' || change.type === 'modified') {
-        postYouTubeTime();
+  chrome.tabs.query(queryInfo, function (result) {
+    chrome.tabs.executeScript(
+      result[0].id,
+      {
+        code: 'document.getElementsByClassName("video-stream")[0].currentTime',
+      },
+      (results) => {
+        let time = results && results[0];
+        console.log(uid);
+        db.collection('Users')
+          .doc(uid)
+          .collection('Activity')
+          .doc('YouTube')
+          .set({ YouTubeTime: time }, { merge: true })
+          .then(() => {
+            console.log('YouTube time successfully written!');
+          })
+          .catch((error) => {
+            console.error(
+              'Error writing YouTube time: ',
+              error,
+              '\n Retrying...'
+            );
+            if (postYouTubeTimeRetryLimit < 3) {
+              postYouTubeTimeRetryLimit++;
+              postYouTubeTime(time);
+            } else {
+              postYouTubeTimeRetryLimit = 0;
+            }
+          });
       }
-    });
+    );
   });
+}
 
 chrome.tabs.onUpdated.addListener(function (activeInfo, changeInfo, tab) {
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
@@ -166,6 +178,8 @@ chrome.tabs.onUpdated.addListener(function (activeInfo, changeInfo, tab) {
     }
 
     if (youtubeRegex.test(tab.url)) {
+      currentYouTubeURL = tab.url;
+
       let data = {
         YouTubeTitle: tab.title,
         YouTubeURL: tab.url,

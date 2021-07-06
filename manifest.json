@@ -9,7 +9,8 @@
     "activeTab",
     "<all_urls>",
     "identity",
-    "storage"
+    "storage",
+    "https://www.youtube.com/*"
   ],
 
   "background": {
