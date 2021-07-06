@@ -108,7 +108,7 @@ function postYouTubeData(data) {
       console.error('Error writing YouTube data: ', error, '\n Retrying...');
       if (postYouTubeDataRetryLimit < 3) {
         postYouTubeDataRetryLimit++;
-        postTabData(data);
+        postYouTubeData(data);
       } else {
         postYouTubeDataRetryLimit = 0;
       }
@@ -118,11 +118,11 @@ function postYouTubeData(data) {
 function postYouTubeTime() {
   chrome.tabs.executeScript(
     {
-      code: 'document.querySelector(".video-stream").getCurrentTime();',
+      code: 'document.getElementById("movie_player").getCurrentTime()',
     },
     (results) => {
-      let time = results && results[0];
-      console.log(time);
+      // let time = results && results[0];
+      console.log(results);
       db.collection('Users')
         .doc(uid?.replace(/['"]+/g, ''))
         .collection('Activity')
@@ -151,10 +151,41 @@ function postYouTubeTime() {
 db.collection('Users')
   .doc(uid?.replace(/['"]+/g, ''))
   .collection('YouTubeTimeRequests')
-  .onSnapshot(() => {
-    postYouTubeTime();
+  .onSnapshot((snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type === 'added' || change.type === 'modified') {
+        postYouTubeTime();
+      }
+    });
   });
 
+chrome.tabs.onUpdated.addListener(function (activeInfo) {
+  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    // Throw error
+    if (chrome.runtime.lastError) {
+    }
+
+    var activeTab = tabs[0];
+
+    if (youtubeRegex.test(activeTab.url)) {
+      let data = {
+        YouTubeTitle: activeTab.title,
+        YouTubeURL: activeTab.url,
+        Date: new Date(),
+      };
+
+      postYouTubeData(data);
+    } else {
+      let data = {
+        TabTitle: activeTab.title,
+        TabURL: activeTab.url,
+        Date: new Date(),
+      };
+
+      postTabData(data);
+    }
+  });
+});
 chrome.tabs.onActivated.addListener(function (activeInfo) {
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
     // Throw error
