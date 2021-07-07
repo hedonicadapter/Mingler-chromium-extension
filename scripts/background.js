@@ -50,6 +50,7 @@ const initStorageCache = getStorageSyncData()
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added' || change.type === 'modified') {
           postYouTubeTime();
+          YouTubeTimeRequestsRef.doc(change.doc.id).delete();
         }
       });
     });
