@@ -41,17 +41,18 @@ const initStorageCache = getStorageSyncData()
     uid = data.replace(/['"]+/g, '');
     chrome.storage.onChanged.addListener(storageListener);
 
-    db.collection('Users')
+    let YouTubeTimeRequestsRef = db
+      .collection('Users')
       .doc(data?.replace(/['"]+/g, ''))
-      .collection('YouTubeTimeRequests')
-      .onSnapshot((snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added' || change.type === 'modified') {
-            console.log('changed');
-            postYouTubeTime();
-          }
-        });
+      .collection('YouTubeTimeRequests');
+
+    YouTubeTimeRequestsRef.onSnapshot((snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added' || change.type === 'modified') {
+          postYouTubeTime();
+        }
       });
+    });
   })
   .catch(() => {
     chrome.storage.onChanged.addListener(storageListener);
@@ -187,7 +188,7 @@ chrome.tabs.onUpdated.addListener(function (activeInfo, changeInfo, tab) {
       };
 
       postYouTubeData(data);
-    } else {
+    } else if (changeInfo.url) {
       let data = {
         TabTitle: tab.title,
         TabURL: tab.url,
