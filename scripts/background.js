@@ -14,6 +14,13 @@ let currentYouTubeURL;
 let youtubeRegex =
   /(https:(.+?\.)?youtube\.com\/watch(\/[A-Za-z0-9\-\._~:\/\?#\[\]@!$&'\(\)\*\+,;\=]*)?)/;
 
+let host = chrome.runtime.connectNative('com.samba.sharehubhost');
+host.onDisconnect.addListener(function () {
+  if (chrome.runtime.lastError) {
+    console.log('Host runtime error: ', chrome.runtime.lastError);
+  }
+});
+
 const initStorage = () => {
   try {
     initStorageCache;

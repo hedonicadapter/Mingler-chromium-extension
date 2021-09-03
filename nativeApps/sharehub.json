@@ -1,0 +1,7 @@
+{
+  "name": "com.samba.sharehubhost",
+  "description": "Sharehub chrome extension host",
+  "path": "C:\\Users\\\"Sad Hentai\"\\AppData\\Local\\Programs\\electron-react-boilerplate\\ElectronReact.exe",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://fbdmmknpnfpgbnihddedcmgbbngpeaim/"]
+}
