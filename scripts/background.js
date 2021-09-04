@@ -17,7 +17,7 @@ let youtubeRegex =
 let host = chrome.runtime.connectNative('com.samba.sharehubhost');
 host.onDisconnect.addListener(function () {
   if (chrome.runtime.lastError) {
-    console.log('Host runtime error: ', chrome.runtime.lastError);
+    console.log('Host runtime error: ', chrome.runtime.lastError.message);
   }
 });
 
