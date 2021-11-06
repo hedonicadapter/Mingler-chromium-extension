@@ -10,11 +10,21 @@ let [
 // Used to target specific tab with the current youtube link
 // when executing content script
 let currentYouTubeURL;
-
-let youtubeRegex =
+const youtubeRegex =
   /(https:(.+?\.)?youtube\.com\/watch(\/[A-Za-z0-9\-\._~:\/\?#\[\]@!$&'\(\)\*\+,;\=]*)?)/;
 
 let host = chrome.runtime.connectNative('com.samba.sharehubhost');
+
+host.postMessage({ text: 'Hello, my_application' });
+
+// The only message the extension will receive from the host
+// is a user ID
+host.onMessage.addListener(function (msg) {
+  console.log('Received host message: ' + msg);
+
+  setUserID(msg);
+});
+
 host.onDisconnect.addListener(function () {
   if (chrome.runtime.lastError) {
     console.log('Host runtime error: ', chrome.runtime.lastError.message);
@@ -82,42 +92,51 @@ function getStorageSyncData() {
   });
 }
 
-function getUserID() {
-  $.ajax({
-    url: 'http://localhost:8080',
-    method: 'GET',
-    contentType: 'text/html',
-    cache: false,
-  })
-    .done((data) => {
-      chrome.storage.sync.set({ UserID: data }, function () {
-        console.log('Synced storage data set to: ', data);
-      });
-    })
-    .fail((jqXHR, textStatus, errorThrown) => {
-      console.log('Error getting user ID: ', errorThrown, '\n Retrying...');
-      getUserID();
-    });
+function setUserID(id) {
+  chrome.storage.sync.set({ UserID: id }, function () {
+    console.log('Synced storage data set to: ', id);
+  });
 }
 
+// function getUserID() {
+//   $.ajax({
+//     url: 'http://localhost:8080',
+//     method: 'GET',
+//     contentType: 'text/html',
+//     cache: false,
+//   })
+//     .done((data) => {
+//       chrome.storage.sync.set({ UserID: data }, function () {
+//         console.log('Synced storage data set to: ', data);
+//       });
+//     })
+//     .fail((jqXHR, textStatus, errorThrown) => {
+//       console.log('Error getting user ID: ', errorThrown, '\n Retrying...');
+//       getUserID();
+//     });
+// }
+
 function postTabData(data) {
-  db.collection('Users')
-    .doc(uid)
-    .collection('Activity')
-    .doc('ChromiumTab')
-    .set(data)
-    .then(function () {
-      console.log('Tab data successfully written!');
-    })
-    .catch(function (error) {
-      console.error('Error writing tab data: ', error, '\n Retrying...');
-      if (postTabDataRetryLimit < 3) {
-        postTabDataRetryLimit++;
-        postTabData(data);
-      } else {
-        postTabDataRetryLimit = 0;
-      }
-    });
+  console.log('tabData posted: ', data);
+  host.postMessage({ tabData: data });
+
+  // db.collection('Users')
+  //   .doc(uid)
+  //   .collection('Activity')
+  //   .doc('ChromiumTab')
+  //   .set(data)
+  //   .then(function () {
+  //     console.log('Tab data successfully written!');
+  //   })
+  //   .catch(function (error) {
+  //     console.error('Error writing tab data: ', error, '\n Retrying...');
+  //     if (postTabDataRetryLimit < 3) {
+  //       postTabDataRetryLimit++;
+  //       postTabData(data);
+  //     } else {
+  //       postTabDataRetryLimit = 0;
+  //     }
+  //   });
 }
 
 function postYouTubeData(data) {
@@ -180,7 +199,7 @@ function postYouTubeTime() {
   });
 }
 
-chrome.tabs.onUpdated.addListener(function (activeInfo, changeInfo, tab) {
+chrome.tabs.onActivated.addListener(function (activeInfo, changeInfo, tab) {
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
     // Throw error
     if (chrome.runtime.lastError) {
@@ -202,6 +221,7 @@ chrome.tabs.onUpdated.addListener(function (activeInfo, changeInfo, tab) {
         TabURL: tab.url,
         Date: new Date(),
       };
+      console.log('tab changed');
 
       postTabData(data);
     }
