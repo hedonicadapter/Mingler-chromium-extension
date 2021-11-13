@@ -1,11 +1,6 @@
 let uid;
 
-let [
-  initStorageRetryLimit,
-  postTabDataRetryLimit,
-  postYouTubeDataRetryLimit,
-  postYouTubeTimeRetryLimit,
-] = Array(4).fill(3);
+let [initStorageRetryLimit, postYouTubeTimeRetryLimit] = Array(4).fill(3);
 
 // Used to target specific tab with the current youtube link
 // when executing content script
@@ -116,49 +111,6 @@ function setUserID(id) {
 //     });
 // }
 
-function postTabData(data) {
-  console.log('tabData posted: ', data);
-  host.postMessage({ tabData: data });
-
-  // db.collection('Users')
-  //   .doc(uid)
-  //   .collection('Activity')
-  //   .doc('ChromiumTab')
-  //   .set(data)
-  //   .then(function () {
-  //     console.log('Tab data successfully written!');
-  //   })
-  //   .catch(function (error) {
-  //     console.error('Error writing tab data: ', error, '\n Retrying...');
-  //     if (postTabDataRetryLimit < 3) {
-  //       postTabDataRetryLimit++;
-  //       postTabData(data);
-  //     } else {
-  //       postTabDataRetryLimit = 0;
-  //     }
-  //   });
-}
-
-function postYouTubeData(data) {
-  db.collection('Users')
-    .doc(uid)
-    .collection('Activity')
-    .doc('YouTube')
-    .set(data)
-    .then(function () {
-      console.log('YouTube data successfully written!');
-    })
-    .catch(function (error) {
-      console.error('Error writing YouTube data: ', error, '\n Retrying...');
-      if (postYouTubeDataRetryLimit < 3) {
-        postYouTubeDataRetryLimit++;
-        postYouTubeData(data);
-      } else {
-        postYouTubeDataRetryLimit = 0;
-      }
-    });
-}
-
 function postYouTubeTime() {
   queryInfo = {
     url: currentYouTubeURL,
@@ -205,28 +157,65 @@ chrome.tabs.onActivated.addListener(function (activeInfo, changeInfo, tab) {
     if (chrome.runtime.lastError) {
     }
 
-    if (youtubeRegex.test(tab.url)) {
-      currentYouTubeURL = tab.url;
-
-      let data = {
-        YouTubeTitle: tab.title,
-        YouTubeURL: tab.url,
-        Date: new Date(),
-      };
-
-      postYouTubeData(data);
-    } else if (changeInfo.url) {
-      let data = {
-        TabTitle: tab.title,
-        TabURL: tab.url,
-        Date: new Date(),
-      };
-      console.log('tab changed');
-
-      postTabData(data);
-    }
+    tabDataHandler(false, tabs);
   });
 });
+chrome.tabs.onUpdated.addListener(function (activeInfo, changeInfo, tab) {
+  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    // Throw error
+    if (chrome.runtime.lastError) {
+    }
+
+    tabDataHandler(tab, false);
+  });
+});
+
+function tabDataHandler(onUpdatedTabs, onActivatedTabs) {
+  console.log('activated ', onActivatedTabs[0]);
+  console.log('updated  ', onUpdatedTabs);
+
+  if (onActivatedTabs) {
+    if (youtubeRegex.test(onActivatedTabs[0].url)) {
+      currentYouTubeURL = onActivatedTabs[0].url;
+
+      let data = {
+        YouTubeTitle: onActivatedTabs[0].title,
+        YouTubeURL: onActivatedTabs[0].url,
+        Date: new Date(),
+      };
+
+      host.postMessage(data);
+    } else if (onActivatedTabs[0].url) {
+      let data = {
+        TabTitle: onActivatedTabs[0].title,
+        TabURL: onActivatedTabs[0].url,
+        Date: new Date(),
+      };
+
+      host.postMessage(data);
+    }
+  } else if (onUpdatedTabs) {
+    if (youtubeRegex.test(onUpdatedTabs.url)) {
+      currentYouTubeURL = onUpdatedTabs.url;
+
+      let data = {
+        YouTubeTitle: onUpdatedTabs.title,
+        YouTubeURL: onUpdatedTabs.url,
+        Date: new Date(),
+      };
+
+      host.postMessage(data);
+    } else if (onUpdatedTabs.url) {
+      let data = {
+        TabTitle: onUpdatedTabs.title,
+        TabURL: onUpdatedTabs.url,
+        Date: new Date(),
+      };
+
+      host.postMessage(data);
+    }
+  }
+}
 
 // function connect() {
 //   const ws = new WebSocket('ws://localhost:8080');
