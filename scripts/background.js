@@ -10,14 +10,21 @@ const youtubeRegex =
 
 let host = chrome.runtime.connectNative('com.samba.sharehubhost');
 
-host.postMessage({ text: 'Hello, my_application' });
+// host.postMessage({ text: 'Hello, my_application' });
 
 // The only message the extension will receive from the host
 // is a user ID
 host.onMessage.addListener(function (msg) {
-  console.log('Received host message: ' + msg);
-
-  setUserID(msg);
+  console.log('msg from host: ', msg);
+  if (msg?.YouTubeURL) {
+    getYouTubeTime(msg.YouTubeURL, msg.YouTubeTitle).then((time) => {
+      host.postMessage({
+        time: time,
+      });
+    });
+  } else {
+    setUserID(msg);
+  }
 });
 
 host.onDisconnect.addListener(function () {
@@ -110,6 +117,33 @@ function setUserID(id) {
 //       getUserID();
 //     });
 // }
+
+function getYouTubeTime(YouTubeURL, YouTubeTitle) {
+  queryInfo = {
+    url: YouTubeURL,
+    title: YouTubeTitle,
+  };
+
+  return new Promise((resolve, reject) => {
+    try {
+      let time;
+
+      chrome.tabs.query(queryInfo, function (result) {
+        chrome.tabs.executeScript(
+          result[0].id,
+          {
+            code: 'document.getElementsByClassName("video-stream")[0].currentTime',
+          },
+          (results) => {
+            resolve(Math.floor(results && results[0]));
+          }
+        );
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
 
 function postYouTubeTime() {
   queryInfo = {
