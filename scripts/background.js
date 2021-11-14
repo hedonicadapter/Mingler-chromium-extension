@@ -1,18 +1,37 @@
 let uid;
 
-let [
-  initStorageRetryLimit,
-  postTabDataRetryLimit,
-  postYouTubeDataRetryLimit,
-  postYouTubeTimeRetryLimit,
-] = Array(4).fill(3);
+let [initStorageRetryLimit, postYouTubeTimeRetryLimit] = Array(4).fill(3);
 
 // Used to target specific tab with the current youtube link
 // when executing content script
 let currentYouTubeURL;
-
-let youtubeRegex =
+const youtubeRegex =
   /(https:(.+?\.)?youtube\.com\/watch(\/[A-Za-z0-9\-\._~:\/\?#\[\]@!$&'\(\)\*\+,;\=]*)?)/;
+
+let host = chrome.runtime.connectNative('com.samba.sharehubhost');
+
+// host.postMessage({ text: 'Hello, my_application' });
+
+// The only message the extension will receive from the host
+// is a user ID
+host.onMessage.addListener(function (msg) {
+  console.log('msg from host: ', msg);
+  if (msg?.YouTubeURL) {
+    getYouTubeTime(msg.YouTubeURL, msg.YouTubeTitle).then((time) => {
+      host.postMessage({
+        time: time,
+      });
+    });
+  } else {
+    setUserID(msg);
+  }
+});
+
+host.onDisconnect.addListener(function () {
+  if (chrome.runtime.lastError) {
+    console.log('Host runtime error: ', chrome.runtime.lastError.message);
+  }
+});
 
 const initStorage = () => {
   try {
@@ -75,62 +94,55 @@ function getStorageSyncData() {
   });
 }
 
-function getUserID() {
-  $.ajax({
-    url: 'http://localhost:8080',
-    method: 'GET',
-    contentType: 'text/html',
-    cache: false,
-  })
-    .done((data) => {
-      chrome.storage.sync.set({ UserID: data }, function () {
-        console.log('Synced storage data set to: ', data);
+function setUserID(id) {
+  chrome.storage.sync.set({ UserID: id }, function () {
+    console.log('Synced storage data set to: ', id);
+  });
+}
+
+// function getUserID() {
+//   $.ajax({
+//     url: 'http://localhost:8080',
+//     method: 'GET',
+//     contentType: 'text/html',
+//     cache: false,
+//   })
+//     .done((data) => {
+//       chrome.storage.sync.set({ UserID: data }, function () {
+//         console.log('Synced storage data set to: ', data);
+//       });
+//     })
+//     .fail((jqXHR, textStatus, errorThrown) => {
+//       console.log('Error getting user ID: ', errorThrown, '\n Retrying...');
+//       getUserID();
+//     });
+// }
+
+function getYouTubeTime(YouTubeURL, YouTubeTitle) {
+  queryInfo = {
+    url: YouTubeURL,
+    title: YouTubeTitle,
+  };
+
+  return new Promise((resolve, reject) => {
+    try {
+      let time;
+
+      chrome.tabs.query(queryInfo, function (result) {
+        chrome.tabs.executeScript(
+          result[0].id,
+          {
+            code: 'document.getElementsByClassName("video-stream")[0].currentTime',
+          },
+          (results) => {
+            resolve(Math.floor(results && results[0]));
+          }
+        );
       });
-    })
-    .fail((jqXHR, textStatus, errorThrown) => {
-      console.log('Error getting user ID: ', errorThrown, '\n Retrying...');
-      getUserID();
-    });
-}
-
-function postTabData(data) {
-  db.collection('Users')
-    .doc(uid)
-    .collection('Activity')
-    .doc('ChromiumTab')
-    .set(data)
-    .then(function () {
-      console.log('Tab data successfully written!');
-    })
-    .catch(function (error) {
-      console.error('Error writing tab data: ', error, '\n Retrying...');
-      if (postTabDataRetryLimit < 3) {
-        postTabDataRetryLimit++;
-        postTabData(data);
-      } else {
-        postTabDataRetryLimit = 0;
-      }
-    });
-}
-
-function postYouTubeData(data) {
-  db.collection('Users')
-    .doc(uid)
-    .collection('Activity')
-    .doc('YouTube')
-    .set(data)
-    .then(function () {
-      console.log('YouTube data successfully written!');
-    })
-    .catch(function (error) {
-      console.error('Error writing YouTube data: ', error, '\n Retrying...');
-      if (postYouTubeDataRetryLimit < 3) {
-        postYouTubeDataRetryLimit++;
-        postYouTubeData(data);
-      } else {
-        postYouTubeDataRetryLimit = 0;
-      }
-    });
+    } catch (e) {
+      reject(e);
+    }
+  });
 }
 
 function postYouTubeTime() {
@@ -173,33 +185,71 @@ function postYouTubeTime() {
   });
 }
 
+chrome.tabs.onActivated.addListener(function (activeInfo, changeInfo, tab) {
+  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    // Throw error
+    if (chrome.runtime.lastError) {
+    }
+
+    tabDataHandler(false, tabs);
+  });
+});
 chrome.tabs.onUpdated.addListener(function (activeInfo, changeInfo, tab) {
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
     // Throw error
     if (chrome.runtime.lastError) {
     }
 
-    if (youtubeRegex.test(tab.url)) {
-      currentYouTubeURL = tab.url;
-
-      let data = {
-        YouTubeTitle: tab.title,
-        YouTubeURL: tab.url,
-        Date: new Date(),
-      };
-
-      postYouTubeData(data);
-    } else if (changeInfo.url) {
-      let data = {
-        TabTitle: tab.title,
-        TabURL: tab.url,
-        Date: new Date(),
-      };
-
-      postTabData(data);
-    }
+    tabDataHandler(tab, false);
   });
 });
+
+function tabDataHandler(onUpdatedTabs, onActivatedTabs) {
+  console.log('activated ', onActivatedTabs[0]);
+  console.log('updated  ', onUpdatedTabs);
+
+  if (onActivatedTabs) {
+    if (youtubeRegex.test(onActivatedTabs[0].url)) {
+      currentYouTubeURL = onActivatedTabs[0].url;
+
+      let data = {
+        YouTubeTitle: onActivatedTabs[0].title,
+        YouTubeURL: onActivatedTabs[0].url,
+        Date: new Date(),
+      };
+
+      host.postMessage(data);
+    } else if (onActivatedTabs[0].url) {
+      let data = {
+        TabTitle: onActivatedTabs[0].title,
+        TabURL: onActivatedTabs[0].url,
+        Date: new Date(),
+      };
+
+      host.postMessage(data);
+    }
+  } else if (onUpdatedTabs) {
+    if (youtubeRegex.test(onUpdatedTabs.url)) {
+      currentYouTubeURL = onUpdatedTabs.url;
+
+      let data = {
+        YouTubeTitle: onUpdatedTabs.title,
+        YouTubeURL: onUpdatedTabs.url,
+        Date: new Date(),
+      };
+
+      host.postMessage(data);
+    } else if (onUpdatedTabs.url) {
+      let data = {
+        TabTitle: onUpdatedTabs.title,
+        TabURL: onUpdatedTabs.url,
+        Date: new Date(),
+      };
+
+      host.postMessage(data);
+    }
+  }
+}
 
 // function connect() {
 //   const ws = new WebSocket('ws://localhost:8080');

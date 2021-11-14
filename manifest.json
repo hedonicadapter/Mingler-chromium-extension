@@ -3,14 +3,15 @@
   "version": "1.0",
   "description": "Gets active tabs of users and sends to sharehub node app",
   "permissions": [
+    "nativeMessaging",
     "http://localhost/*",
+    "https://www.youtube.com/*",
     "background",
     "tabs",
     "activeTab",
     "<all_urls>",
     "identity",
-    "storage",
-    "https://www.youtube.com/*"
+    "storage"
   ],
 
   "background": {

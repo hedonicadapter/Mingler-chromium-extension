@@ -1,0 +1,7 @@
+{
+  "name": "com.samba.sharehubhost",
+  "description": "Sharehub chrome extension host",
+  "path": "shchromiumhost.exe",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://fbdmmknpnfpgbnihddedcmgbbngpeaim/"]
+}
