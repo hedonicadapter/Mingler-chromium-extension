@@ -10,8 +10,6 @@ const youtubeRegex =
 
 let host = chrome.runtime.connectNative('com.samba.sharehubhost');
 
-// host.postMessage({ text: 'Hello, my_application' });
-
 // The only message the extension will receive from the host
 // is a user ID
 host.onMessage.addListener(function (msg) {
@@ -31,6 +29,8 @@ host.onDisconnect.addListener(function () {
   if (chrome.runtime.lastError) {
     console.log('Host runtime error: ', chrome.runtime.lastError.message);
   }
+  // Reload the app every 15 seconds to try to reconnect
+  setTimeout(() => chrome.runtime.reload(), 15000);
 });
 
 const initStorage = () => {
