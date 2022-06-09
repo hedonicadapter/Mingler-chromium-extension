@@ -213,7 +213,7 @@ function tabDataHandler(onUpdatedTabs, onActivatedTabs) {
       currentYouTubeURL = onActivatedTabs[0].url;
 
       let data = {
-        YouTubeTitle: onActivatedTabs[0].title,
+        YouTubeTitle: onActivatedTabs[0].title.replace(' - YouTube', ''),
         YouTubeURL: onActivatedTabs[0].url,
         Date: new Date(),
       };
@@ -233,7 +233,7 @@ function tabDataHandler(onUpdatedTabs, onActivatedTabs) {
       currentYouTubeURL = onUpdatedTabs.url;
 
       let data = {
-        YouTubeTitle: onUpdatedTabs.title,
+        YouTubeTitle: onUpdatedTabs.title.replace(' - YouTube', ''),
         YouTubeURL: onUpdatedTabs.url,
         Date: new Date(),
       };
