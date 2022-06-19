@@ -59,20 +59,6 @@ const initStorageCache = getStorageSyncData()
     // Copy the data retrieved from storage into storageCache.
     uid = data.replace(/['"]+/g, '');
     chrome.storage.onChanged.addListener(storageListener);
-
-    let YouTubeTimeRequestsRef = db
-      .collection('Users')
-      .doc(data?.replace(/['"]+/g, ''))
-      .collection('YouTubeTimeRequests');
-
-    YouTubeTimeRequestsRef.onSnapshot((snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added' || change.type === 'modified') {
-          postYouTubeTime();
-          YouTubeTimeRequestsRef.doc(change.doc.id).delete();
-        }
-      });
-    });
   })
   .catch(() => {
     chrome.storage.onChanged.addListener(storageListener);
@@ -100,24 +86,6 @@ function setUserID(id) {
   });
 }
 
-// function getUserID() {
-//   $.ajax({
-//     url: 'http://localhost:8080',
-//     method: 'GET',
-//     contentType: 'text/html',
-//     cache: false,
-//   })
-//     .done((data) => {
-//       chrome.storage.sync.set({ UserID: data }, function () {
-//         console.log('Synced storage data set to: ', data);
-//       });
-//     })
-//     .fail((jqXHR, textStatus, errorThrown) => {
-//       console.log('Error getting user ID: ', errorThrown, '\n Retrying...');
-//       getUserID();
-//     });
-// }
-
 function getYouTubeTime(YouTubeURL, YouTubeTitle) {
   queryInfo = {
     url: YouTubeURL,
@@ -142,46 +110,6 @@ function getYouTubeTime(YouTubeURL, YouTubeTitle) {
     } catch (e) {
       reject(e);
     }
-  });
-}
-
-function postYouTubeTime() {
-  queryInfo = {
-    url: currentYouTubeURL,
-  };
-
-  chrome.tabs.query(queryInfo, function (result) {
-    chrome.tabs.executeScript(
-      result[0].id,
-      {
-        code: 'document.getElementsByClassName("video-stream")[0].currentTime',
-      },
-      (results) => {
-        let time = results && results[0];
-        console.log(uid);
-        db.collection('Users')
-          .doc(uid)
-          .collection('Activity')
-          .doc('YouTube')
-          .set({ YouTubeTime: time }, { merge: true })
-          .then(() => {
-            console.log('YouTube time successfully written!');
-          })
-          .catch((error) => {
-            console.error(
-              'Error writing YouTube time: ',
-              error,
-              '\n Retrying...'
-            );
-            if (postYouTubeTimeRetryLimit < 3) {
-              postYouTubeTimeRetryLimit++;
-              postYouTubeTime(time);
-            } else {
-              postYouTubeTimeRetryLimit = 0;
-            }
-          });
-      }
-    );
   });
 }
 
@@ -250,35 +178,3 @@ function tabDataHandler(onUpdatedTabs, onActivatedTabs) {
     }
   }
 }
-
-// function connect() {
-//   const ws = new WebSocket('ws://localhost:8080');
-
-//   ws.addEventListener('open', () => {
-//     console.log('yer');
-//     console.log('sharehub extension connected');
-//     ws.addEventListener('message', function (event) {
-//       console.log('Message from server ', event.data);
-//     });
-//   });
-
-//   ws.addEventListener('close', (event) => {
-//     console.log('Extension connection closed. ' + event.reason);
-//     setTimeout(function () {
-//       console.log('Reconnecting');
-//       connect();
-//     }, 1000);
-//   });
-
-//   ws.addEventListener('error', function (event) {
-//     console.log('Extension connection error: ', event);
-//   });
-// }
-
-// connect();
-
-// fetch('http://localhost:8080')
-//   .then((response) => JSON.stringify(response))
-//   .then((userID) => {
-//     console.log(userID);
-//   });
