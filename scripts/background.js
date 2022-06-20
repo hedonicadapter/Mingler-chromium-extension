@@ -15,7 +15,7 @@ let host = chrome.runtime.connectNative('com.samba.sharehubhost');
 host.onMessage.addListener(function (msg) {
   console.log('msg from host: ', msg);
   if (msg?.YouTubeURL) {
-    getYouTubeTime(msg.YouTubeURL, msg.YouTubeTitle).then((time) => {
+    getYouTubeTime(msg.YouTubeURL).then((time) => {
       host.postMessage({
         time: time,
       });
@@ -86,17 +86,15 @@ function setUserID(id) {
   });
 }
 
-function getYouTubeTime(YouTubeURL, YouTubeTitle) {
-  queryInfo = {
-    url: YouTubeURL,
-    title: YouTubeTitle,
-  };
+function getYouTubeTime(YouTubeURL) {
+  console.log('queryInfo ', queryInfo);
 
   return new Promise((resolve, reject) => {
     try {
       let time;
 
-      chrome.tabs.query(queryInfo, function (result) {
+      chrome.tabs.query({ url: YouTubeURL }, function (result) {
+        console.log('tabs query', result);
         chrome.tabs.executeScript(
           result[0].id,
           {
