@@ -87,8 +87,6 @@ function setUserID(id) {
 }
 
 function getYouTubeTime(YouTubeURL) {
-  console.log('queryInfo ', queryInfo);
-
   return new Promise((resolve, reject) => {
     try {
       let time;
