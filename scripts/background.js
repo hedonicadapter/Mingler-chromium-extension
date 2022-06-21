@@ -16,6 +16,7 @@ host.onMessage.addListener(function (msg) {
   console.log('msg from host: ', msg);
   if (msg?.YouTubeURL) {
     getYouTubeTime(msg.YouTubeURL).then((time) => {
+      console.log(time);
       host.postMessage({
         time: time,
       });
