@@ -1,7 +1,7 @@
 {
-  "name": "sharehub tabcrawler",
+  "name": "Mingler tabcrawler",
   "version": "1.0",
-  "description": "Gets active tabs of users and sends to sharehub node app",
+  "description": "Gets active tabs of users and sends to Mingler server",
   "permissions": [
     "nativeMessaging",
     "http://localhost/*",

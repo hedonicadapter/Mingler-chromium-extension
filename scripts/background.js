@@ -8,7 +8,7 @@ let currentYouTubeURL;
 const youtubeRegex =
   /(https:(.+?\.)?youtube\.com\/watch(\/[A-Za-z0-9\-\._~:\/\?#\[\]@!$&'\(\)\*\+,;\=]*)?)/;
 
-let host = chrome.runtime.connectNative('com.samba.sharehubhost');
+let host = chrome.runtime.connectNative('com.samba.minglerhost');
 
 // The only message the extension will receive from the host
 // is a user ID
@@ -18,6 +18,7 @@ host.onMessage.addListener(function (msg) {
     getYouTubeTime(msg.YouTubeURL).then((time) => {
       console.log(time);
       host.postMessage({
+        ...msg,
         time: time,
       });
     });
