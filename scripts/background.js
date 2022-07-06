@@ -14,7 +14,10 @@ let host = chrome.runtime.connectNative('com.samba.minglerhost');
 // is a user ID
 host.onMessage.addListener(function (msg) {
   console.log('msg from host: ', msg);
-  if (msg?.YouTubeURL) {
+  if (msg === 'request:awaitnewclient') {
+    console.log('Extension reloaded - Awaiting new client. ');
+    chrome.runtime.reload();
+  } else if (msg?.YouTubeURL) {
     getYouTubeTime(msg.YouTubeURL).then((time) => {
       console.log(time);
       host.postMessage({
@@ -31,6 +34,9 @@ host.onDisconnect.addListener(function () {
   if (chrome.runtime.lastError) {
     console.log('Host runtime error: ', chrome.runtime.lastError.message);
   }
+
+  chrome.tabs.onActivated.removeListener(onActivatedTabHandler);
+  chrome.tabs.onUpdated.removeListener(onUpdatedTabHandler);
   // Reload the app every 15 seconds to try to reconnect
   setTimeout(() => chrome.runtime.reload(), 15000);
 });
@@ -111,16 +117,7 @@ function getYouTubeTime(YouTubeURL) {
   });
 }
 
-chrome.tabs.onActivated.addListener(function (activeInfo, changeInfo, tab) {
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    // Throw error
-    if (chrome.runtime.lastError) {
-    }
-
-    tabDataHandler(false, tabs);
-  });
-});
-chrome.tabs.onUpdated.addListener(function (activeInfo, changeInfo, tab) {
+function onUpdatedTabHandler(activeInfo, changeInfo, tab) {
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
     // Throw error
     if (chrome.runtime.lastError) {
@@ -128,7 +125,20 @@ chrome.tabs.onUpdated.addListener(function (activeInfo, changeInfo, tab) {
 
     tabDataHandler(tab, false);
   });
-});
+}
+
+function onActivatedTabHandler(activeInfo, changeInfo, tab) {
+  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    // Throw error
+    if (chrome.runtime.lastError) {
+    }
+
+    tabDataHandler(false, tabs);
+  });
+}
+
+chrome.tabs.onActivated.addListener(onActivatedTabHandler);
+chrome.tabs.onUpdated.addListener(onUpdatedTabHandler);
 
 function tabDataHandler(onUpdatedTabs, onActivatedTabs) {
   console.log('activated ', onActivatedTabs[0]);
