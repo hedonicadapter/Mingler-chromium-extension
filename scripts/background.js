@@ -14,8 +14,8 @@ let host = chrome.runtime.connectNative('com.samba.minglerhost');
 // is a user ID
 host.onMessage.addListener(function (msg) {
   console.log('msg from host: ', msg);
-  if (msg === 'request:awaitnewclient') {
-    console.log('Extension reloaded - Awaiting new client. ');
+  if (msg === 'request:reset') {
+    console.log('Extension reloading - Awaiting new client. ');
     chrome.runtime.reload();
   } else if (msg?.YouTubeURL) {
     getYouTubeTime(msg.YouTubeURL).then((time) => {
