@@ -97,10 +97,10 @@ function setUserID(id) {
 function getYouTubeTime(YouTubeURL) {
   return new Promise((resolve, reject) => {
     try {
-      let time;
-
       chrome.tabs.query({ url: YouTubeURL }, function (result) {
         console.log('tabs query', result);
+        if (!result || !result[0]?.data)
+          reject('Failed in querying youtube video. ');
         chrome.tabs.executeScript(
           result[0].id,
           {
