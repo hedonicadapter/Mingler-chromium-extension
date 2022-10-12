@@ -18,13 +18,15 @@ host.onMessage.addListener(function (msg) {
     console.log('Extension reloading - Awaiting new client. ');
     chrome.runtime.reload();
   } else if (msg?.YouTubeURL) {
-    getYouTubeTime(msg.YouTubeURL).then((time) => {
-      console.log(time);
-      host.postMessage({
-        ...msg,
-        time: time,
-      });
-    });
+    getYouTubeTime(msg.YouTubeURL)
+      .then((time) => {
+        console.log(time);
+        host.postMessage({
+          ...msg,
+          time: time,
+        });
+      })
+      .catch(console.warn);
   } else {
     setUserID(msg);
   }
@@ -99,8 +101,9 @@ function getYouTubeTime(YouTubeURL) {
     try {
       chrome.tabs.query({ url: YouTubeURL }, function (result) {
         console.log('tabs query', result);
-        if (!result || !result[0]?.data)
-          reject('Failed in querying youtube video. ');
+        if (!result || !result[0]) {
+          reject('Failed in querying youtube video busta. ');
+        }
         chrome.tabs.executeScript(
           result[0].id,
           {
